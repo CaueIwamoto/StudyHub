@@ -19,4 +19,21 @@ Desenvolver uma plataforma educacional que facilite o acesso, o compartilhamento
 | Estudante | Pode consultar, adquirir e avaliar os conteúdos, além de participar de grupos de estudos e utilizar suas agendas. |
 | Autor | Pode publicar projetos, aulas, cursos e materiais educacionais na plataforma. |
 
+## 🔄 Oportunidades de Reuso
+
+O StudyHub utiliza diferentes soluções e tecnologias reutilizáveis para reduzir o esforço de desenvolvimento, aumentar a produtividade e facilitar a manutenção do sistema.
+
+As principais oportunidades de reuso identificadas são:
+
+- **Next:** desenvolvimento das interfaces web e mobile por meio de componentes reutilizáveis.
+- **JWT:** autenticação e controle de acesso dos usuários.
+- **shadcn/ui:** utilização de componentes reutilizáveis para construção e padronização das interfaces, incluindo a agenda compartilhada.
+- **Serviço de Chat:** comunicação entre usuários e integrantes dos grupos.
+- **Firebase:** armazenamento e disponibilização dos arquivos e projetos educacionais.
+- **API de Pagamento:** processamento das aquisições de conteúdos disponibilizados na plataforma.
+
+A utilização dessas soluções permite que a equipe concentre seus esforços no desenvolvimento das funcionalidades específicas do StudyHub, evitando a implementação de recursos comuns do zero.
+
 **Projeto da disciplina Tópicos Avançados de Engenharia de Software - FEI, 2º semestre 2026**
+
+
