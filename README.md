@@ -1,6 +1,7 @@
 # StudyHub
 
 ### 👤 Integrantes:
+- André Alves Toledo Silva, R.A: 22.122.020-5
 - Arthur Carvalho Rotkis, R.A: 22.123.116-0
 - Cauê Iwamoto Meira, R.A: 22.221.039-5
 - Hanna de Oliveira Melo, R.A: 22.223.002-1
