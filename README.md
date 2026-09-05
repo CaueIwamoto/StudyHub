@@ -34,6 +34,16 @@ As principais oportunidades de reuso identificadas são:
 
 A utilização dessas soluções permite que a equipe concentre seus esforços no desenvolvimento das funcionalidades específicas do StudyHub, evitando a implementação de recursos comuns do zero.
 
+## Definition of Done (DoD)
+### Em termos de código:
+- Não devem haver erros de execução ou avisos
+- A tarefa foi testada pelo desenvolvedor que a programou
+- A tarefa foi revisada pelo Scrum Master
+### Em termos de funcionalidade:
+- Todos os critérios de aceite foram atendidos
+- A funcionalidade não quebra outras funcionalidades
+- Não há bugs conhecidos
+
 **Projeto da disciplina Tópicos Avançados de Engenharia de Software - FEI, 2º semestre 2026**
 
 
