@@ -44,6 +44,10 @@ A utilização dessas soluções permite que a equipe concentre seus esforços n
 - A funcionalidade não quebra outras funcionalidades
 - Não há bugs conhecidos
 
+## Evidência do Inicio da Sprint 1
+<img width="1772" height="701" alt="image" src="https://github.com/user-attachments/assets/82ad583d-b9ff-4c98-a187-03adbd2c760d" />
+
+
 **Projeto da disciplina Tópicos Avançados de Engenharia de Software - FEI, 2º semestre 2026**
 
 
