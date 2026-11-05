@@ -20,6 +20,7 @@ public class Proposta
     public TipoProposta Tipo { get; private set; }
     public StatusProposta Status { get; private set; }
     public DateTime DataCriacao { get; private set; }
+    public DateTime? PrazoEntrega { get; private set; }
 
     public Pedido? Pedido { get; private set; }
     public Usuario? Prestador { get; private set; }
@@ -41,6 +42,20 @@ public class Proposta
 
     public bool PertenceAoPrestador(Guid usuarioId) => PrestadorId == usuarioId;
 
+    /// <summary>Atualiza os campos comerciais somente enquanto a proposta estiver pendente.</summary>
+    public void Atualizar(decimal valorProposto, string? mensagem, DateTime prazoEntrega)
+    {
+        if (Status != StatusProposta.Pendente)
+            throw new DomainException($"Propostas com status {Status} não podem ser atualizadas. Apenas propostas Pendentes podem ser alteradas.");
+
+        if (valorProposto <= 0)
+            throw new DomainException("O valor proposto deve ser maior que zero.");
+
+        ValorProposto = valorProposto;
+        Mensagem = mensagem;
+        PrazoEntrega = prazoEntrega;
+    }
+
     /// <summary>Regra 10: somente propostas Pendentes podem ser aceitas.</summary>
     public void Aceitar()
     {
@@ -57,6 +72,15 @@ public class Proposta
             throw new DomainException($"Propostas com status {Status} não podem ser recusadas. Apenas propostas Pendentes podem ser recusadas.");
 
         Status = StatusProposta.Recusada;
+    }
+
+    /// <summary>O prestador pode retirar somente sua proposta ainda pendente, preservando o histórico.</summary>
+    public void Cancelar()
+    {
+        if (Status != StatusProposta.Pendente)
+            throw new DomainException($"Propostas com status {Status} não podem ser canceladas. Apenas propostas Pendentes podem ser canceladas.");
+
+        Status = StatusProposta.Cancelada;
     }
 
     /// <summary>Regra 14: usada quando outra proposta é aceita (ou o pedido é cancelado). Só afeta propostas Pendentes.</summary>

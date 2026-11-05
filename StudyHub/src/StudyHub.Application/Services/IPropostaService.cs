@@ -17,6 +17,12 @@ public interface IPropostaService
     /// <summary>Consulta uma proposta (somente o prestador autor ou o cliente proprietário do pedido).</summary>
     Task<PropostaDetalhadaResponse> ObterAsync(Guid usuarioId, Guid propostaId, CancellationToken cancellationToken = default);
 
+    /// <summary>Prestador autor atualiza mensagem, valor e prazo de uma proposta pendente.</summary>
+    Task<PropostaDetalhadaResponse> AtualizarAsync(Guid prestadorId, Guid propostaId, AtualizarPropostaRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Prestador autor retira sua proposta pendente, preservando o histórico.</summary>
+    Task<PropostaDetalhadaResponse> CancelarAsync(Guid prestadorId, Guid propostaId, CancellationToken cancellationToken = default);
+
     /// <summary>Cliente proprietário aceita a proposta: fecha o pedido, registra o ValorAcordado e encerra as demais.</summary>
     Task<PropostaDetalhadaResponse> AceitarAsync(Guid clienteId, Guid propostaId, CancellationToken cancellationToken = default);
 

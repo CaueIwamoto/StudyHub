@@ -11,7 +11,7 @@ namespace StudyHub.Api.Controllers;
 /// <summary>
 /// Gerenciamento de Propostas. O usuário autenticado é SEMPRE obtido das claims do JWT:
 /// nenhum endpoint aceita PrestadorId/ClienteId vindos do corpo ou da query.
-/// Não há endpoint para alterar status diretamente: as transições ocorrem apenas em aceitar/recusar.
+/// As transições de status são controladas por operações específicas: aceitar, recusar e retirar proposta.
 /// </summary>
 [ApiController]
 [Authorize]
@@ -66,6 +66,29 @@ public class PropostasController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PropostaDetalhadaResponse>> Obter(Guid id, CancellationToken cancellationToken)
         => Ok(await _propostas.ObterAsync(User.ObterUsuarioId(), id, cancellationToken));
+
+    /// <summary>Prestador autor atualiza mensagem, valor e prazo de uma proposta pendente.</summary>
+    [HttpPut("propostas/{id:guid}")]
+    [Authorize(Roles = Papeis.Prestador)]
+    [ProducesResponseType(typeof(PropostaDetalhadaResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<PropostaDetalhadaResponse>> Atualizar(Guid id, [FromBody] AtualizarPropostaRequest request, CancellationToken cancellationToken)
+        => Ok(await _propostas.AtualizarAsync(User.ObterUsuarioId(), id, request, cancellationToken));
+
+    /// <summary>Prestador autor retira sua proposta pendente, preservando o registro e o histórico.</summary>
+    [HttpDelete("propostas/{id:guid}")]
+    [Authorize(Roles = Papeis.Prestador)]
+    [ProducesResponseType(typeof(PropostaDetalhadaResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<PropostaDetalhadaResponse>> Cancelar(Guid id, CancellationToken cancellationToken)
+        => Ok(await _propostas.CancelarAsync(User.ObterUsuarioId(), id, cancellationToken));
 
     /// <summary>
     /// Cliente proprietário aceita a proposta: proposta Aceita, pedido Fechado com ValorAcordado

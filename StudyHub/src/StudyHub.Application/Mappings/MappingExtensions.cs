@@ -24,7 +24,7 @@ public static class MappingExtensions
             throw new InvalidOperationException("Proposta carregada sem Pedido/Prestador.");
 
         return new PropostaDetalhadaResponse(
-            p.Id, p.PedidoId, p.PrestadorId, p.ValorProposto, p.Mensagem, p.Tipo, p.Status, p.DataCriacao,
+            p.Id, p.PedidoId, p.PrestadorId, p.ValorProposto, p.Mensagem, p.Tipo, p.Status, p.DataCriacao, p.PrazoEntrega,
             p.Pedido.ToDto(),
             p.Prestador.ToPublicoDto());
     }

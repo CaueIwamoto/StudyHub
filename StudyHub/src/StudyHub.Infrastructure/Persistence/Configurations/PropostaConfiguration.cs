@@ -16,7 +16,7 @@ public class PropostaConfiguration : IEntityTypeConfiguration<Proposta>
         {
             t.HasCheckConstraint("CK_Propostas_ValorProposto", "\"ValorProposto\" > 0");
             t.HasCheckConstraint("CK_Propostas_Tipo", "\"Tipo\" IN (1, 2)");
-            t.HasCheckConstraint("CK_Propostas_Status", "\"Status\" IN (1, 2, 3, 4)");
+            t.HasCheckConstraint("CK_Propostas_Status", "\"Status\" IN (1, 2, 3, 4, 5)");
         });
 
         builder.HasKey(p => p.Id);
@@ -27,6 +27,7 @@ public class PropostaConfiguration : IEntityTypeConfiguration<Proposta>
         builder.Property(p => p.Tipo).IsRequired();
         builder.Property(p => p.Status).IsRequired();
         builder.Property(p => p.DataCriacao).IsRequired().HasColumnType("timestamp with time zone");
+        builder.Property(p => p.PrazoEntrega).HasColumnType("timestamp with time zone");
 
         // Pedido 1:N Propostas (histórico preservado: sem cascade).
         builder.HasOne(p => p.Pedido)

@@ -55,6 +55,8 @@ public class ApiContractTests
     [Theory]
     [InlineData(nameof(PropostasController.Criar), Papeis.Prestador)]
     [InlineData(nameof(PropostasController.ListarMinhas), Papeis.Prestador)]
+    [InlineData(nameof(PropostasController.Atualizar), Papeis.Prestador)]
+    [InlineData(nameof(PropostasController.Cancelar), Papeis.Prestador)]
     [InlineData(nameof(PropostasController.ListarPorPedido), Papeis.Cliente)]
     [InlineData(nameof(PropostasController.Aceitar), Papeis.Cliente)]
     [InlineData(nameof(PropostasController.Recusar), Papeis.Cliente)]
@@ -82,6 +84,8 @@ public class ApiContractTests
             "GET pedidos/{pedidoId:guid}/propostas",
             "GET propostas/minhas",
             "GET propostas/{id:guid}",
+            "PUT propostas/{id:guid}",
+            "DELETE propostas/{id:guid}",
             "PATCH propostas/{id:guid}/aceitar",
             "PATCH propostas/{id:guid}/recusar",
             "POST pedidos/{pedidoId:guid}/propostas"

@@ -88,6 +88,9 @@ namespace StudyHub.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("DataCriacao")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("PrazoEntrega")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Mensagem")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
@@ -125,7 +128,7 @@ namespace StudyHub.Infrastructure.Persistence.Migrations
 
                     b.ToTable("Propostas", t =>
                         {
-                            t.HasCheckConstraint("CK_Propostas_Status", "\"Status\" IN (1, 2, 3, 4)");
+                            t.HasCheckConstraint("CK_Propostas_Status", "\"Status\" IN (1, 2, 3, 4, 5)");
 
                             t.HasCheckConstraint("CK_Propostas_Tipo", "\"Tipo\" IN (1, 2)");
 

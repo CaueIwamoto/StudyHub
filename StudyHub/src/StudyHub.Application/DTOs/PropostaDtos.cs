@@ -19,6 +19,19 @@ public class CriarPropostaRequest
     public string? Mensagem { get; set; }
 }
 
+/// <summary>Dados editáveis de uma proposta pendente. O prestador é identificado pelo JWT.</summary>
+public sealed class AtualizarPropostaRequest
+{
+    [Range(typeof(decimal), "0.01", "9999999999999999.99", ErrorMessage = "O valor proposto deve ser maior que zero.")]
+    public decimal ValorProposto { get; set; }
+
+    [StringLength(1000, ErrorMessage = "A mensagem deve ter no máximo 1000 caracteres.")]
+    public string? Mensagem { get; set; }
+
+    [Required(ErrorMessage = "O prazo de entrega é obrigatório.")]
+    public DateTime? PrazoEntrega { get; set; }
+}
+
 public sealed record PropostaResponse(
     Guid Id,
     Guid PedidoId,
@@ -42,5 +55,6 @@ public sealed record PropostaDetalhadaResponse(
     TipoProposta Tipo,
     StatusProposta Status,
     DateTime DataCriacao,
+    DateTime? PrazoEntrega,
     PedidoDto Pedido,
     UsuarioPublicoDto Prestador);

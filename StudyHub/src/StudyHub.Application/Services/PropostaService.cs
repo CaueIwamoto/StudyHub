@@ -121,6 +121,83 @@ public sealed class PropostaService : IPropostaService
         return proposta.ToDetalhadaResponse();
     }
 
+    public async Task<PropostaDetalhadaResponse> AtualizarAsync(Guid prestadorId, Guid propostaId, AtualizarPropostaRequest request, CancellationToken cancellationToken = default)
+    {
+        RequestValidator.ValidateObject(request);
+
+        var valor = decimal.Round(request.ValorProposto, 2, MidpointRounding.AwayFromZero);
+        var erros = new ValidationErrors();
+        if (valor <= 0)
+            erros.Add(nameof(request.ValorProposto), "O valor proposto deve ser maior que zero.");
+        else if (valor > ValorMaximo)
+            erros.Add(nameof(request.ValorProposto), "O valor proposto excede o máximo permitido.");
+
+        var prazo = request.PrazoEntrega!.Value;
+        if (prazo <= DateTime.UtcNow)
+            erros.Add(nameof(request.PrazoEntrega), "O prazo de entrega deve ser uma data e hora futura.");
+        if (prazo.Kind == DateTimeKind.Unspecified)
+            erros.Add(nameof(request.PrazoEntrega), "Informe o prazo de entrega com fuso horário (UTC ou offset).");
+        erros.ThrowIfAny();
+
+        var prestador = await _usuarios.GetByIdAsync(prestadorId, cancellationToken)
+            ?? throw new UnauthorizedException("Usuário do token não encontrado.");
+        if (prestador.Tipo != TipoUsuario.Prestador)
+            throw new ForbiddenException("Apenas usuários do tipo Prestador podem atualizar propostas.");
+
+        var proposta = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            // Usa o mesmo bloqueio do pedido empregado no aceite/recusa para evitar corrida com mudança de status.
+            var pedidoId = await _propostas.ObterPedidoIdAsync(propostaId, ct)
+                ?? throw new NotFoundException("Proposta não encontrada.");
+            _ = await _pedidos.GetByIdParaAtualizacaoAsync(pedidoId, ct)
+                ?? throw new NotFoundException("Pedido não encontrado.");
+
+            var atual = await _propostas.GetByIdAsync(propostaId, ct)
+                ?? throw new NotFoundException("Proposta não encontrada.");
+
+            if (!atual.PertenceAoPrestador(prestadorId))
+                throw new ForbiddenException("Apenas o prestador responsável pode atualizar esta proposta.");
+
+            atual.Atualizar(valor, string.IsNullOrWhiteSpace(request.Mensagem) ? null : request.Mensagem.Trim(), prazo);
+            return atual;
+        }, cancellationToken);
+
+        return proposta.ToDetalhadaResponse();
+    }
+
+    public async Task<PropostaDetalhadaResponse> CancelarAsync(Guid prestadorId, Guid propostaId, CancellationToken cancellationToken = default)
+    {
+        var prestador = await _usuarios.GetByIdAsync(prestadorId, cancellationToken)
+            ?? throw new UnauthorizedException("Usuário do token não encontrado.");
+        if (prestador.Tipo != TipoUsuario.Prestador)
+            throw new ForbiddenException("Apenas usuários do tipo Prestador podem retirar propostas.");
+
+        var proposta = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            // Serializa a retirada com atualização, aceite, recusa e cancelamento do pedido.
+            var pedidoId = await _propostas.ObterPedidoIdAsync(propostaId, ct)
+                ?? throw new NotFoundException("Proposta não encontrada.");
+            var pedido = await _pedidos.GetByIdParaAtualizacaoAsync(pedidoId, ct)
+                ?? throw new NotFoundException("Pedido não encontrado.");
+            var atual = await _propostas.GetByIdAsync(propostaId, ct)
+                ?? throw new NotFoundException("Proposta não encontrada.");
+
+            if (!atual.PertenceAoPrestador(prestadorId))
+                throw new ForbiddenException("Apenas o prestador responsável pode retirar esta proposta.");
+
+            atual.Cancelar(); // Somente Pendente -> Cancelada; mantém o registro no histórico.
+
+            // Se era a última proposta pendente, o pedido volta a ficar disponível para outros prestadores.
+            var restamPendentes = await _propostas.ExisteOutraPendenteAsync(pedido.Id, atual.Id, ct);
+            if (!restamPendentes && pedido.Status == StatusPedido.EmNegociacao)
+                pedido.Reabrir();
+
+            return atual;
+        }, cancellationToken);
+
+        return proposta.ToDetalhadaResponse();
+    }
+
     public async Task<PropostaDetalhadaResponse> AceitarAsync(Guid clienteId, Guid propostaId, CancellationToken cancellationToken = default)
     {
         var proposta = await _unitOfWork.ExecuteInTransactionAsync(async ct =>

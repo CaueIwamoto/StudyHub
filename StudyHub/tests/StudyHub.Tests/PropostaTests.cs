@@ -444,4 +444,179 @@ public class PropostaTests
         Assert.Single(propostas, p => p.Status == StatusProposta.Aceita);
         Assert.Equal(150m, (await env2.Pedidos.ObterAsync(pedido.Id)).ValorAcordado);
     }
+
+    [Fact]
+    public async Task Atualizacao_valida_persiste_mensagem_valor_e_prazo()
+    {
+        using var env = new TestEnvironment();
+        var (_, prestador, pedido) = await PrepararAsync(env);
+        var proposta = await env.EnviarPropostaAsync(prestador.Id, pedido.Id, TipoProposta.Contraproposta, 150m);
+        var prazo = DateTime.UtcNow.AddDays(5);
+
+        var atualizada = await env.Propostas.AtualizarAsync(prestador.Id, proposta.Id, new AtualizarPropostaRequest
+        {
+            Mensagem = "Mensagem atualizada",
+            ValorProposto = 175.50m,
+            PrazoEntrega = prazo
+        });
+
+        Assert.Equal(175.50m, atualizada.ValorProposto);
+        Assert.Equal("Mensagem atualizada", atualizada.Mensagem);
+        Assert.Equal(prazo, atualizada.PrazoEntrega);
+        var persistida = await env.Propostas.ObterAsync(prestador.Id, proposta.Id);
+        Assert.Equal(175.50m, persistida.ValorProposto);
+        Assert.Equal(prazo, persistida.PrazoEntrega);
+    }
+
+    [Fact]
+    public async Task Atualizacao_de_proposta_inexistente_retorna_not_found()
+    {
+        using var env = new TestEnvironment();
+        var prestador = await env.RegistrarAsync(TipoUsuario.Prestador);
+        var request = new AtualizarPropostaRequest { ValorProposto = 120m, PrazoEntrega = DateTime.UtcNow.AddDays(2) };
+
+        await Assert.ThrowsAsync<NotFoundException>(() => env.Propostas.AtualizarAsync(prestador.Id, Guid.NewGuid(), request));
+    }
+
+    [Fact]
+    public async Task Outro_prestador_nao_pode_atualizar_proposta()
+    {
+        using var env = new TestEnvironment();
+        var (_, prestador, pedido) = await PrepararAsync(env);
+        var outroPrestador = await env.RegistrarAsync(TipoUsuario.Prestador);
+        var proposta = await env.EnviarPropostaAsync(prestador.Id, pedido.Id, TipoProposta.Contraproposta, 150m);
+        var request = new AtualizarPropostaRequest { ValorProposto = 120m, PrazoEntrega = DateTime.UtcNow.AddDays(2) };
+
+        await Assert.ThrowsAsync<ForbiddenException>(() => env.Propostas.AtualizarAsync(outroPrestador.Id, proposta.Id, request));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Atualizacao_rejeita_valor_zero_ou_negativo(decimal valor)
+    {
+        using var env = new TestEnvironment();
+        var (_, prestador, pedido) = await PrepararAsync(env);
+        var proposta = await env.EnviarPropostaAsync(prestador.Id, pedido.Id, TipoProposta.Contraproposta, 150m);
+        var request = new AtualizarPropostaRequest { ValorProposto = valor, PrazoEntrega = DateTime.UtcNow.AddDays(2) };
+
+        await Assert.ThrowsAsync<RequestValidationException>(() => env.Propostas.AtualizarAsync(prestador.Id, proposta.Id, request));
+    }
+
+    [Fact]
+    public async Task Atualizacao_nao_permite_proposta_aceita_recusada_ou_encerrada_por_cancelamento()
+    {
+        using var env = new TestEnvironment();
+        var (cliente, prestadorA, pedido) = await PrepararAsync(env);
+        var prestadorB = await env.RegistrarAsync(TipoUsuario.Prestador);
+        var prestadorC = await env.RegistrarAsync(TipoUsuario.Prestador);
+        var aceita = await env.EnviarPropostaAsync(prestadorA.Id, pedido.Id, TipoProposta.AceiteValorInicial, 100m);
+        var recusada = await env.EnviarPropostaAsync(prestadorB.Id, pedido.Id, TipoProposta.Contraproposta, 150m);
+        await env.Propostas.AceitarAsync(cliente.Id, aceita.Id);
+        await Assert.ThrowsAsync<DomainException>(() => env.Propostas.AtualizarAsync(prestadorA.Id, aceita.Id,
+            new AtualizarPropostaRequest { ValorProposto = 110m, PrazoEntrega = DateTime.UtcNow.AddDays(2) }));
+        // A segunda proposta é encerrada como NaoSelecionada após o aceite.
+        await Assert.ThrowsAsync<DomainException>(() => env.Propostas.AtualizarAsync(prestadorB.Id, recusada.Id,
+            new AtualizarPropostaRequest { ValorProposto = 110m, PrazoEntrega = DateTime.UtcNow.AddDays(2) }));
+
+        // Uma proposta recusada também não pode ser atualizada.
+        var (clienteD, prestadorD, pedidoD) = await PrepararAsync(env);
+        var recusada2 = await env.EnviarPropostaAsync(prestadorD.Id, pedidoD.Id, TipoProposta.Contraproposta, 150m);
+        await env.Propostas.RecusarAsync(clienteD.Id, recusada2.Id);
+        await Assert.ThrowsAsync<DomainException>(() => env.Propostas.AtualizarAsync(prestadorD.Id, recusada2.Id,
+            new AtualizarPropostaRequest { ValorProposto = 110m, PrazoEntrega = DateTime.UtcNow.AddDays(2) }));
+
+        var pedidoCancelado = await env.CriarPedidoAsync(cliente.Id, titulo: "Pedido para cancelar");
+        var encerrada = await env.EnviarPropostaAsync(prestadorC.Id, pedidoCancelado.Id, TipoProposta.Contraproposta, 150m);
+        await env.Pedidos.CancelarAsync(cliente.Id, pedidoCancelado.Id);
+        await Assert.ThrowsAsync<DomainException>(() => env.Propostas.AtualizarAsync(prestadorC.Id, encerrada.Id,
+            new AtualizarPropostaRequest { ValorProposto = 110m, PrazoEntrega = DateTime.UtcNow.AddDays(2) }));
+    }
+
+    [Fact]
+    public async Task Atualizacao_rejeita_prazo_passado_ou_sem_fuso_horario()
+    {
+        using var env = new TestEnvironment();
+        var (_, prestador, pedido) = await PrepararAsync(env);
+        var proposta = await env.EnviarPropostaAsync(prestador.Id, pedido.Id, TipoProposta.Contraproposta, 150m);
+
+        await Assert.ThrowsAsync<RequestValidationException>(() => env.Propostas.AtualizarAsync(prestador.Id, proposta.Id,
+            new AtualizarPropostaRequest { ValorProposto = 160m, PrazoEntrega = DateTime.UtcNow.AddDays(-1) }));
+        await Assert.ThrowsAsync<RequestValidationException>(() => env.Propostas.AtualizarAsync(prestador.Id, proposta.Id,
+            new AtualizarPropostaRequest { ValorProposto = 160m, PrazoEntrega = DateTime.SpecifyKind(DateTime.UtcNow.AddDays(2), DateTimeKind.Unspecified) }));
+    }
+
+
+    [Fact]
+    public async Task Prestador_retirar_proposta_pendente_preserva_historico_e_reabre_pedido_se_ultima()
+    {
+        using var env = new TestEnvironment();
+        var (cliente, prestador, pedido) = await PrepararAsync(env);
+        var proposta = await env.EnviarPropostaAsync(prestador.Id, pedido.Id, TipoProposta.Contraproposta, 150m);
+
+        var retirada = await env.Propostas.CancelarAsync(prestador.Id, proposta.Id);
+
+        Assert.Equal(StatusProposta.Cancelada, retirada.Status);
+        Assert.Equal(StatusProposta.Cancelada, (await env.Propostas.ObterAsync(prestador.Id, proposta.Id)).Status);
+        Assert.Single(await env.Db.Propostas.ToListAsync()); // registro preservado
+        Assert.Equal(StatusPedido.Aberto, (await env.Pedidos.ObterAsync(pedido.Id)).Status);
+
+        // A retirada libera o prestador para enviar uma nova proposta ao mesmo pedido.
+        var nova = await env.EnviarPropostaAsync(prestador.Id, pedido.Id, TipoProposta.Contraproposta, 160m);
+        Assert.Equal(StatusProposta.Pendente, nova.Status);
+        Assert.Equal(2, await env.Db.Propostas.CountAsync());
+    }
+
+    [Fact]
+    public async Task Retirar_uma_proposta_nao_reabre_pedido_se_existir_outra_pendente()
+    {
+        using var env = new TestEnvironment();
+        var (_, prestadorA, pedido) = await PrepararAsync(env);
+        var prestadorB = await env.RegistrarAsync(TipoUsuario.Prestador);
+        var propostaA = await env.EnviarPropostaAsync(prestadorA.Id, pedido.Id, TipoProposta.Contraproposta, 150m);
+        var propostaB = await env.EnviarPropostaAsync(prestadorB.Id, pedido.Id, TipoProposta.Contraproposta, 160m);
+
+        await env.Propostas.CancelarAsync(prestadorA.Id, propostaA.Id);
+
+        Assert.Equal(StatusProposta.Cancelada, (await env.Propostas.ObterAsync(prestadorA.Id, propostaA.Id)).Status);
+        Assert.Equal(StatusProposta.Pendente, (await env.Propostas.ObterAsync(prestadorB.Id, propostaB.Id)).Status);
+        Assert.Equal(StatusPedido.EmNegociacao, (await env.Pedidos.ObterAsync(pedido.Id)).Status);
+    }
+
+    [Fact]
+    public async Task Retirar_proposta_inexistente_retorna_not_found()
+    {
+        using var env = new TestEnvironment();
+        var prestador = await env.RegistrarAsync(TipoUsuario.Prestador);
+
+        await Assert.ThrowsAsync<NotFoundException>(() => env.Propostas.CancelarAsync(prestador.Id, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task Outro_prestador_nao_pode_retirar_proposta()
+    {
+        using var env = new TestEnvironment();
+        var (_, prestador, pedido) = await PrepararAsync(env);
+        var outroPrestador = await env.RegistrarAsync(TipoUsuario.Prestador);
+        var proposta = await env.EnviarPropostaAsync(prestador.Id, pedido.Id, TipoProposta.Contraproposta, 150m);
+
+        await Assert.ThrowsAsync<ForbiddenException>(() => env.Propostas.CancelarAsync(outroPrestador.Id, proposta.Id));
+        Assert.Equal(StatusProposta.Pendente, (await env.Propostas.ObterAsync(prestador.Id, proposta.Id)).Status);
+    }
+
+    [Fact]
+    public async Task Somente_proposta_pendente_pode_ser_retirada()
+    {
+        using var env = new TestEnvironment();
+        var (cliente, prestadorA, pedido) = await PrepararAsync(env);
+        var aceita = await env.EnviarPropostaAsync(prestadorA.Id, pedido.Id, TipoProposta.AceiteValorInicial, 100m);
+        await env.Propostas.AceitarAsync(cliente.Id, aceita.Id);
+        await Assert.ThrowsAsync<DomainException>(() => env.Propostas.CancelarAsync(prestadorA.Id, aceita.Id));
+
+        var (cliente2, prestadorB, pedido2) = await PrepararAsync(env);
+        var recusada = await env.EnviarPropostaAsync(prestadorB.Id, pedido2.Id, TipoProposta.Contraproposta, 150m);
+        await env.Propostas.RecusarAsync(cliente2.Id, recusada.Id);
+        await Assert.ThrowsAsync<DomainException>(() => env.Propostas.CancelarAsync(prestadorB.Id, recusada.Id));
+    }
+
 }
