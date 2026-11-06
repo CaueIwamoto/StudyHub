@@ -49,11 +49,6 @@ Passo a passo:
 4) Comando: "docker compose ps"
 5) Comando: "dotnet restore"
 6) Comando: "dotnet tool restore"
-8) Comando: dotnet ef database update \
-  --project src/StudyHub.Infrastructure \
-  --startup-project src/StudyHub.Api
-9) Comando: ASPNETCORE_ENVIRONMENT=Development dotnet run \
-  --project src/StudyHub.Api \
-  --no-launch-profile \
-  --urls http://0.0.0.0:5080
+8) Comando: dotnet ef database update --project src/StudyHub.Infrastructure --startup-project src/StudyHub.Api
+9) Comando: ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/StudyHub.Api --no-launch-profile --urls http://0.0.0.0:5080
 10) Acesse http://0.0.0.0:5080/swagger
