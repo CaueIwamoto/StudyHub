@@ -41,7 +41,8 @@ A utilização dessas soluções permite que a equipe concentre seus esforços n
 
 <img width="1066" height="930" alt="DiagramaDeComponentes1 drawio" src="https://github.com/user-attachments/assets/cd3196bb-9d6a-4a0c-a63c-9fd0d1d06403" />
 
-Passo a passo: #Instalar DotNet 8.0.0 / Postgresql
+Passo a passo: 
+##Instalar DotNet 8.0.0 / Postgresql
 1) Entre na pasta StudyHub
 2) Comando: "cp .env.example .env"
 3) Comando: "docker compose up -d"
